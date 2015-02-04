@@ -1,5 +1,5 @@
 /*
- * proxy.c - Web proxy for COMPSCI 512
+ * Webproxy Xinyun Jiang
  *
  */
 
@@ -12,9 +12,6 @@
 #define   DEBUG_FILE	"proxy.debug"
 
 
-/*============================================================
- * function declarations
- *============================================================*/
 
 int  find_target_address(char * uri,
 			 char * target_address,
@@ -38,7 +35,6 @@ int debugfd;
 int logfd;
 pthread_mutex_t mutex;
 
-/* main function for the proxy program */
 
 int main(int argc, char *argv[])
 {
@@ -86,16 +82,13 @@ int main(int argc, char *argv[])
 
   logfd = Open(LOG_FILE, O_CREAT | O_TRUNC | O_WRONLY, 0666);    
 
-
-  /* if writing to log files, force each thread to grab a lock before writing
-     to the files */
   
   pthread_mutex_init(&mutex, NULL);
   
   while(1) {
     clientlen = sizeof(clientaddr);
 
-    /* accept a new connection from a client here */
+    /* accept a new connection from a client */
 
     connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
     args = malloc(2 * sizeof(int));
@@ -103,9 +96,6 @@ int main(int argc, char *argv[])
     args[1] = serverPort;
     pthread_create(&tid, NULL, webTalk, (void*) args);
     pthread_detach(tid);
-    /* you have to write the code to process this new client request */
-
-    /* create a new thread (or two) to process the new connection */
 
   }
   
@@ -116,7 +106,6 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-/* a possibly handy function that we provide, fully written */
 
 void parseAddress(char* url, char* host, char** file, int* serverPort)
 {
@@ -130,14 +119,8 @@ void parseAddress(char* url, char* host, char** file, int* serverPort)
 	
 	strcpy(host, url);
 
-	/* first time strtok_r is called, returns pointer to host */
-	/* strtok_r (and strtok) destroy the string that is tokenized */
-
-	/* get rid of everything after the first / */
 
 	strtok_r(host, "/", &saveptr);
-
-	/* now look to see if we have a colon */
 
 	point1 = strchr(host, ':');
 	if(!point1) {
@@ -145,19 +128,11 @@ void parseAddress(char* url, char* host, char** file, int* serverPort)
 		return;
 	}
 	
-	/* we do have a colon, so get the host part out */
 	strtok_r(host, ":", &saveptr);
 
-	/* now get the part after the : */
 	*serverPort = atoi(strtok_r(NULL, "/",&saveptr));
 }
 
-
-
-/* this is the function that I spawn as a thread when a new
-   connection is accepted */
-
-/* you have to write a lot of it */
 
 void *webTalk(void* args)
 {
@@ -197,16 +172,13 @@ void *webTalk(void* args)
   if (strcmp(cmd, "GET") == 0){
     printf("========Enter Get===============\n");
     printf("%s %s %i\n", host, file, serverPort);
-  // GET: open connection to webserver (try several times, if necessary)
     serverfd = open_clientfd(host, serverPort);
     if (serverfd <= 0){
       close(clientfd);
       return NULL;
     }
-  /* GET: Transfer first header to webserver */
     sprintf(buf2, "%s %s HTTP/1.1\r\n", cmd, file);
     rio_writen(serverfd, buf2, strlen(buf2));
-  // GET: Transfer remainder of the request
     char buffer[MAXLINE];
     int temp = 0;
     //printf("=====\n");
@@ -224,7 +196,7 @@ void *webTalk(void* args)
       rio_writen(serverfd, buffer, temp);
     }
 
-  // GET: now receive the response
+  // receive the response
     //printf("=====\n");
     while((temp = rio_readp(serverfd, buffer, MAXLINE)) > 0){
       rio_writen(clientfd, buffer, temp);
@@ -239,9 +211,6 @@ void *webTalk(void* args)
     return NULL;
   }
 }
-/* this function handles the two-way encrypted data transferred in
-   an HTTPS connection */
-
 void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int serverPort)
 {
   int serverfd, numBytes1, numBytes2;
@@ -260,8 +229,6 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
     close(clientfd);
     return;
   }
-  /* clientfd is browser */
-  /* serverfd is server */
   
   
   /* let the client know we've connected to the server */
@@ -284,7 +251,6 @@ void secureTalk(int clientfd, rio_t client, char *inHost, char *version, int ser
   return;
 }
 
-/* this function is for passing bytes from origin server to client */
 
 void *forwarder(void* args)
 {
@@ -296,8 +262,6 @@ void *forwarder(void* args)
   free(args);
 
   while((numBytes = rio_readp(serverfd, buf1, MAXLINE)) > 0) {
-    /* serverfd is for talking to the web server */
-    /* clientfd is for talking to the browser */
     rio_writen(clientfd, buf1, numBytes);
   }
   close(clientfd);
@@ -312,21 +276,6 @@ void ignore()
 }
 
 
-/*============================================================
- * url parser:
- *    find_target_address()
- *        Given a url, copy the target web server address to
- *        target_address and the following path to path.
- *        target_address and path have to be allocated before they 
- *        are passed in and should be long enough (use MAXLINE to be 
- *        safe)
- *
- *        Return the port number. 0 is returned if there is
- *        any error in parsing the url.
- *
- *============================================================*/
-
-/*find_target_address - find the host name from the uri */
 int  find_target_address(char * uri, char * target_address, char * path,
                          int  * port)
 
@@ -372,13 +321,6 @@ int  find_target_address(char * uri, char * target_address, char * path,
 }
 
 
-
-/*============================================================
- * log utility
- *    format_log_entry
- *       Copy the formatted log entry to logstring
- *============================================================*/
-
 void format_log_entry(char * logstring, int sock, char * uri, int size)
 {
     time_t  now;
@@ -392,7 +334,7 @@ void format_log_entry(char * logstring, int sock, char * uri, int size)
     strftime(buffer, MAXLINE, "%a %d %b %Y %H:%M:%S %Z", localtime(&now));
 
     if (getpeername(sock, (struct sockaddr *) & addr, &len)) {
-      /* something went wrong writing log entry */
+      
       printf("getpeername failed\n");
       return;
     }
